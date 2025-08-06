@@ -3,8 +3,9 @@ using Microsoft.EntityFrameworkCore;
 using MinimalApi.Domain.DTOs;
 using MinimalApi.Domain.Entities;
 using MinimalApi.Domain.Interfaces;
-using MinimalApi.Domain.ModelViews;
+using MinimalApi.Domain.ViewModels;
 using MinimalApi.Domain.Services;
+using MinimalApi.Domain.Enums;
 using MinimalApi.Infrastructure.Db;
 
 #region Builder
@@ -42,6 +43,63 @@ app.MapPost("/administrators/login", ([FromBody] LoginDTO loginDTO, IAdministrat
     {
         return Results.Unauthorized();
     }
+}).WithTags("Administrators");
+
+app.MapGet("/administrators", ([FromQuery] int? page, IAdministratorService administratorService) =>
+{
+    var adms = new List<AdministratorViewModel>();
+    var administrators = administratorService.GetAll(page);
+    foreach (var adm in administrators)
+    {
+        adms.Add(new AdministratorViewModel
+        {
+            Id = adm.Id,
+            Email = adm.Email,
+            Profile = adm.Profile
+        });
+    }
+    return Results.Ok(adms);
+}).WithTags("Administrators");
+
+app.MapGet("/administrators/{id}", ([FromRoute] int id, IAdministratorService administratorService) =>
+{
+    var administrator = administratorService.GetById(id);
+    if (administrator is null) return Results.NotFound();
+    return Results.Ok(new AdministratorViewModel
+    {
+        Id = administrator.Id,
+        Email = administrator.Email,
+        Profile = administrator.Profile
+    });
+}).WithTags("Administrators");
+
+app.MapPost("/administrators", ([FromBody] AdministratorDTO administratorDTO, IAdministratorService administratorService) =>
+{
+    var validation = new ValidationErrors
+    {
+        Messages = new List<string>()
+    };
+
+    if (string.IsNullOrEmpty(administratorDTO.Email)) validation.Messages.Add("O e-mail não pode ser vazio.");
+    if (string.IsNullOrEmpty(administratorDTO.Password)) validation.Messages.Add("A senha não pode ser vazia.");
+    if (administratorDTO.Profile == null) validation.Messages.Add("O perfil não pode ser vazio.");
+
+    if (validation.Messages.Count > 0) return Results.BadRequest(validation);
+
+    var administrator = new Administrator
+    {
+        Email = administratorDTO.Email,
+        Password = administratorDTO.Password,
+        Profile = administratorDTO.Profile?.ToString() ?? Profile.Editor.ToString()
+    };
+    administratorService.Create(administrator);
+
+    return Results.Created($"/administrators/{administrator.Id}", new AdministratorViewModel
+    {
+        Id = administrator.Id,
+        Email = administrator.Email,
+        Profile = administrator.Profile
+    });
 }).WithTags("Administrators");
 #endregion
 
