@@ -16,7 +16,7 @@ public class VehicleService : IVehicleService
         _contexto = contexto;
     }
 
-    public List<Vehicle> GetAll(int page = 1, string? model = null, string? brand = null)
+    public List<Vehicle> GetAll(int? page = 1, string? model = null, string? brand = null)
     {
         var query = _contexto.Vehicles.AsQueryable();
         if (!string.IsNullOrEmpty(model))
@@ -26,7 +26,7 @@ public class VehicleService : IVehicleService
 
         int itemsPerPage = 10;
 
-        query = query.Skip((page - 1) * itemsPerPage).Take(itemsPerPage);
+        if (page != null) query = query.Skip(((int)page - 1) * itemsPerPage).Take(itemsPerPage);
 
         return query.ToList();
     }
